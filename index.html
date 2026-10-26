@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Untitled World — MMORPG Prototype</title>
+<style>
+:root{color-scheme:dark;--bg:#101612;--panel:#19231d;--line:#34483a;--text:#e8eee7;--muted:#a8b9aa;--gold:#d7b875;--green:#8fc49a}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at top,#24372a,#101612 65%);color:var(--text);font:15px/1.45 system-ui,-apple-system,Segoe UI,sans-serif}button,select{font:inherit}button{background:#304b38;border:1px solid #52765c;color:#f4fff4;border-radius:10px;padding:10px 13px;cursor:pointer}button:hover{background:#3c6046}button:disabled{opacity:.4;cursor:not-allowed}.shell{max-width:1180px;margin:auto;padding:18px}.top{display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:14px}.brand{font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:var(--gold)}.sub{color:var(--muted);font-size:13px}.layout{display:grid;grid-template-columns:minmax(0,1.65fr) minmax(270px,1fr);gap:14px}.panel{background:rgba(25,35,29,.96);border:1px solid var(--line);border-radius:15px;padding:15px;min-width:0}.worldwrap{position:relative;overflow:hidden;border-radius:12px;border:1px solid #52694f;background:#253b2b}canvas{display:block;width:100%;height:auto;image-rendering:pixelated;touch-action:none}.hud{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}.pill{background:#24362a;border:1px solid #3d5942;padding:5px 9px;border-radius:999px;font-size:12px;color:#dbe8dc}.section{font-size:12px;text-transform:uppercase;letter-spacing:.12em;color:var(--gold);margin:0 0 8px}.stack{display:grid;gap:12px}.stats{display:grid;grid-template-columns:1fr 1fr;gap:8px}.stat{padding:10px;background:#111a14;border-radius:9px;border:1px solid #2b3c30}.stat b{display:block;font-size:18px}.stat span{font-size:12px;color:var(--muted)}.log{height:126px;overflow:auto;font-size:13px;color:#c7d5c9;background:#111a14;border-radius:9px;padding:9px}.log p{margin:0 0 7px}.actions{display:flex;gap:7px;flex-wrap:wrap}.controls{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;max-width:230px;margin:10px auto 0}.controls button{padding:12px 0;font-size:18px}.controls .empty{visibility:hidden}.intro{max-width:760px;margin:6vh auto;padding:24px}.intro h1{font-size:clamp(30px,6vw,54px);line-height:1.02;margin:8px 0 14px}.intro p{color:var(--muted)}.choices{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:18px 0}.choice{text-align:left;min-height:135px;background:#18251c;border-color:#3a4e3d}.choice strong{display:block;color:var(--gold);margin-bottom:7px}.choice small{display:block;color:var(--muted);line-height:1.45}.choice.selected{border-color:var(--gold);box-shadow:0 0 0 1px var(--gold) inset}.hidden{display:none!important}.notice{font-size:12px;color:var(--muted);border-top:1px solid var(--line);padding-top:12px;margin-top:12px}.wide{width:100%}@media(max-width:760px){.shell{padding:10px}.layout{grid-template-columns:1fr}.choices{grid-template-columns:1fr}.choice{min-height:0}.intro{margin:2vh auto;padding:16px}.panel{padding:12px}.worldwrap{margin:0 -1px}}
+</style>
+</head>
+<body>
+<div id="start" class="intro panel">
+  <div class="brand">A world without a quest marker</div>
+  <h1>Your life.<br>Not a quest line.</h1>
+  <p>This is the first playable experiment for an open-ended 2D world. Choose a beginning, walk into the wilderness, gather timber, make planks, and build something. There is no mandatory quest.</p>
+  <h3>Where were you born?</h3>
+  <div class="choices">
+    <button class="choice selected" data-origin="worker"><strong>Working family</strong><small>Practical upbringing. Start with a worn axe, basic knowledge, and little money.</small></button>
+    <button class="choice" data-origin="merchant"><strong>Merchant family</strong><small>Start with more coins and business sense, but no free land or guaranteed success.</small></button>
+    <button class="choice" data-origin="noble"><strong>Noble family</strong><small>Start with wealth, education, and connections. Privilege is a head start, not a win button.</small></button>
+  </div>
+  <button id="begin" class="wide">Enter the world</button>
+  <p class="notice">Prototype note: this version is a single-player mechanics test. It does not yet have online multiplayer, server persistence, or a shared economy. Those require the next backend stage.</p>
+</div>
+<div id="game" class="shell hidden">
+  <div class="top"><div><div class="brand">Untitled World</div><div class="sub">Prototype 0.1 · The frontier</div></div><div class="actions"><button id="save">Save locally</button><button id="reset">New life</button></div></div>
+  <div class="layout">
+    <section class="panel">
+      <div class="worldwrap"><canvas id="world" width="720" height="480" aria-label="2D wilderness game world"></canvas></div>
+      <div class="hud"><span class="pill" id="originTag">Background</span><span class="pill" id="timeTag">Day 1 · Morning</span><span class="pill" id="weatherTag">Clear</span></div>
+      <div class="sub">Move with WASD / arrow keys, or use the mobile controls. Walk beside a tree and choose <b>Chop tree</b>. The world has no quest arrow telling you how to live.</div>
+      <div class="controls">
+        <span class="empty">.</span><button data-move="up" aria-label="Move up">▲</button><span class="empty">.</span>
+        <button data-move="left" aria-label="Move left">◀</button><button data-move="down" aria-label="Move down">▼</button><button data-move="right" aria-label="Move right">▶</button>
+      </div>
+    </section>
+    <aside class="stack">
+      <section class="panel"><h2 class="section">Your character</h2><div id="bio" class="sub">A life is shaped by circumstances and choices.</div><div class="stats" style="margin-top:10px"><div class="stat"><b id="money">12</b><span>Coins</span></div><div class="stat"><b id="wood">0</b><span>Logs</span></div><div class="stat"><b id="planks">0</b><span>Planks</span></div><div class="stat"><b id="houses">0</b><span>Buildings</span></div></div></section>
+      <section class="panel"><h2 class="section">Actions</h2><div class="actions"><button id="chop">Chop tree</button><button id="plank">Make planks</button><button id="build">Build a cabin</button></div><p id="actionHint" class="sub">Get close to a tree before chopping. Actions depend on your position and resources.</p></section>
+      <section class="panel"><h2 class="section">What happens here</h2><div id="log" class="log" aria-live="polite"><p>You arrive at the edge of an untamed forest.</p><p>No quest has been assigned. That is intentional.</p></div></section>
+      <section class="panel"><h2 class="section">Design rule</h2><div class="sub">Actions change the world. Background changes your starting chances. The long-term game will add player ownership, families, trades, politics, and other people whose choices collide with yours.</div><div class="notice">Local save is only on this device/browser. Do not treat this prototype as the online game yet.</div></section>
+    </aside>
+  </div>
+</div>
+<script>
+(()=> {
+const canvas=document.getElementById('world'),ctx=canvas.getContext('2d');
+const start=document.getElementById('start'),game=document.getElementById('game');
+let origin='worker',player={x:350,y:250},inv={money:12,wood:0,planks:0,houses:0},day=1,step=0,trees=[],rocks=[],built=[];
+const tile=40;
+function makeWorld(){trees=[];rocks=[];built=[];for(let i=0;i<23;i++){let x=30+Math.random()*660,y=25+Math.random()*420;if(Math.hypot(x-player.x,y-player.y)>70)trees.push({x,y,alive:true});}for(let i=0;i<9;i++)rocks.push({x:20+Math.random()*680,y:20+Math.random()*440});}
+makeWorld();
+const backgrounds={worker:{money:12,bio:'Working family · Practical skills · Little capital',tag:'Working family'},merchant:{money:85,bio:'Merchant family · Business knowledge · Better starting capital',tag:'Merchant family'},noble:{money:240,bio:'Noble family · Education and connections · More obligations',tag:'Noble family'}};
+function say(s){const log=document.getElementById('log'),p=document.createElement('p');p.textContent=s;log.prepend(p);while(log.children.length>16)log.lastChild.remove();}
+function nearTree(){return trees.find(t=>t.alive&&Math.hypot(t.x-player.x,t.y-player.y)<62);}
+function draw(){ctx.clearRect(0,0,720,480);ctx.fillStyle='#31523a';ctx.fillRect(0,0,720,480);
+ // patches of grass
+ for(let y=0;y<480;y+=20)for(let x=0;x<720;x+=20){let n=Math.sin(x*12.9898+y*78.233)*43758.5453;ctx.fillStyle=(n-Math.floor(n))>.65?'#365b3e':'#31523a';ctx.fillRect(x,y,18,18);}
+ // river
+ ctx.fillStyle='#356c79';ctx.beginPath();ctx.moveTo(0,390);ctx.quadraticCurveTo(190,340,340,400);ctx.quadraticCurveTo(490,460,720,390);ctx.lineTo(720,430);ctx.quadraticCurveTo(500,500,320,430);ctx.quadraticCurveTo(160,380,0,430);ctx.fill();
+ // path
+ ctx.strokeStyle='#7a704f';ctx.lineWidth=28;ctx.beginPath();ctx.moveTo(0,280);ctx.quadraticCurveTo(240,300,400,240);ctx.quadraticCurveTo(560,180,720,215);ctx.stroke();
+ ctx.strokeStyle='#a2946a';ctx.lineWidth=20;ctx.stroke();
+ rocks.forEach(r=>{ctx.fillStyle='#747e73';ctx.beginPath();ctx.ellipse(r.x,r.y,11,8,-.2,0,Math.PI*2);ctx.fill();ctx.fillStyle='#9da69a';ctx.fillRect(r.x-5,r.y-5,7,3);});
+ trees.forEach(t=>{if(!t.alive)return;ctx.fillStyle='#5b3e28';ctx.fillRect(t.x-4,t.y+5,8,17);ctx.fillStyle='#193d29';ctx.beginPath();ctx.arc(t.x,t.y,18,0,Math.PI*2);ctx.fill();ctx.fillStyle='#27603a';ctx.beginPath();ctx.arc(t.x-6,t.y-6,12,0,Math.PI*2);ctx.fill();ctx.fillStyle='#4b7b47';ctx.fillRect(t.x-8,t.y-11,5,4);});
+ built.forEach(b=>{ctx.fillStyle='#705035';ctx.fillRect(b.x-20,b.y-16,40,28);ctx.fillStyle='#47352a';ctx.beginPath();ctx.moveTo(b.x-25,b.y-16);ctx.lineTo(b.x,b.y-36);ctx.lineTo(b.x+25,b.y-16);ctx.fill();ctx.fillStyle='#b18a55';ctx.fillRect(b.x-5,b.y-2,10,14);});
+ // player shadow + figure
+ ctx.fillStyle='#18251b';ctx.beginPath();ctx.ellipse(player.x,player.y+10,10,5,0,0,Math.PI*2);ctx.fill();ctx.fillStyle='#e6c39a';ctx.beginPath();ctx.arc(player.x,player.y-5,7,0,Math.PI*2);ctx.fill();ctx.fillStyle=origin==='noble'?'#b8a0db':origin==='merchant'?'#d2ae5e':'#6ba7c7';ctx.fillRect(player.x-7,player.y+2,14,16);ctx.fillStyle='#302c25';ctx.fillRect(player.x-6,player.y+17,5,8);ctx.fillRect(player.x+2,player.y+17,5,8);
+ const near=nearTree();if(near){ctx.strokeStyle='#f0d28c';ctx.lineWidth=2;ctx.beginPath();ctx.arc(near.x,near.y,24,0,Math.PI*2);ctx.stroke();}
+ document.getElementById('timeTag').textContent='Day '+day+' · '+(['Morning','Afternoon','Evening','Night'][Math.floor(step/12)%4]);}
+function update(){document.getElementById('money').textContent=inv.money;document.getElementById('wood').textContent=inv.wood;document.getElementById('planks').textContent=inv.planks;document.getElementById('houses').textContent=inv.houses;document.getElementById('originTag').textContent=backgrounds[origin].tag;document.getElementById('bio').textContent=backgrounds[origin].bio;document.getElementById('chop').disabled=!nearTree();document.getElementById('actionHint').textContent=nearTree()?'A tree is within reach. Chop it, or do something else.':'Move close to a tree to gather timber.';draw();}
+function move(dx,dy){player.x=Math.max(12,Math.min(708,player.x+dx));player.y=Math.max(12,Math.min(468,player.y+dy));step++;if(step%48===0)day++;update();}
+function actChop(){const t=nearTree();if(!t){say('You are too far from a living tree. Move closer first.');return;}t.alive=false;inv.wood+=3;step++;say('You cut down a tree and gathered 3 logs. The tree is gone from this patch of forest.');update();}
+function actPlank(){if(inv.wood<2){say('You need at least 2 logs to make 1 plank.');return;}inv.wood-=2;inv.planks++;say('You processed 2 logs into 1 plank.');update();}
+function actBuild(){if(inv.planks<8){say('A basic cabin needs 8 planks. You can gather and process more timber, or choose another activity.');return;}inv.planks-=8;inv.houses++;built.push({x:Math.max(35,Math.min(685,player.x+35)),y:Math.max(45,Math.min(435,player.y+12))});say('You built a small cabin. It is now part of this patch of land. Future versions will add land rights, construction materials, ownership, and other players.');update();}
+document.querySelectorAll('[data-origin]').forEach(b=>b.addEventListener('click',()=>{document.querySelectorAll('[data-origin]').forEach(c=>c.classList.remove('selected'));b.classList.add('selected');origin=b.dataset.origin;}));
+document.getElementById('begin').onclick=()=>{inv={money:backgrounds[origin].money,wood:0,planks:0,houses:0};start.classList.add('hidden');game.classList.remove('hidden');makeWorld();update();say('Your background gave you different starting resources. Your future is not assigned.');};
+document.getElementById('chop').onclick=actChop;document.getElementById('plank').onclick=actPlank;document.getElementById('build').onclick=actBuild;
+document.querySelectorAll('[data-move]').forEach(b=>{const dirs={up:[0,-20],down:[0,20],left:[-20,0],right:[20,0]};b.addEventListener('click',()=>move(...dirs[b.dataset.move]));});
+window.addEventListener('keydown',e=>{if(game.classList.contains('hidden'))return;const k=e.key.toLowerCase(),dirs={w:[0,-20],arrowup:[0,-20],s:[0,20],arrowdown:[0,20],a:[-20,0],arrowleft:[-20,0],d:[20,0],arrowright:[20,0]};if(dirs[k]){e.preventDefault();move(...dirs[k]);}});
+document.getElementById('save').onclick=()=>{localStorage.setItem('untitled-world-save',JSON.stringify({origin,player,inv,day,step,trees,rocks,built}));say('Saved on this browser. This is not yet an online account save.');};
+document.getElementById('reset').onclick=()=>{if(confirm('Start a new life? Your local prototype save will remain until overwritten.')){game.classList.add('hidden');start.classList.remove('hidden');player={x:350,y:250};step=0;day=1;makeWorld();}};
+try{const s=JSON.parse(localStorage.getItem('untitled-world-save'));if(s&&s.player&&s.inv){const b=document.createElement('button');b.textContent='Continue local save';b.className='wide';b.style.marginTop='8px';document.getElementById('begin').after(b);b.onclick=()=>{origin=s.origin||'worker';player=s.player;inv=s.inv;day=s.day||1;step=s.step||0;trees=s.trees||[];rocks=s.rocks||[];built=s.built||[];start.classList.add('hidden');game.classList.remove('hidden');update();say('Local save restored.');};}}catch(e){}
+draw();
+})();
+</script>
+</body></html>
