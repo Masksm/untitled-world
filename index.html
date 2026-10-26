@@ -72,23 +72,33 @@ function restoreSnapshot(s){
  player=s.player;inv=s.inv;day=s.day||1;step=s.step||0;trees=s.trees||[];rocks=s.rocks||[];built=s.built||[];
  start.classList.add('hidden');game.classList.remove('hidden');update();say('Your character was restored from the saved world state.');return true;
 }
+function applyCharacter(row,treeRows){
+ origin=row.background==='working'?'worker':row.background;
+ player={x:Number(row.position_x),y:Number(row.position_y)};
+ inv={money:row.coins,wood:row.logs,planks:row.planks,houses:row.buildings};
+ day=row.world_day||1;step=(row.world_time||8)*12;
+ trees=(treeRows||[]).map(t=>({id:t.id,x:Number(t.x),y:Number(t.y),alive:t.alive}));
+ rocks=[];built=[];
+ start.classList.add('hidden');game.classList.remove('hidden');update();
+}
 async function saveCloud(showMessage=true){
  if(!currentUser)return false;
- const s=snapshot();
- const row={user_id:currentUser.id,character_name:(currentUser.email||'Wanderer').split('@')[0].slice(0,32)||'Wanderer',background:origin==='worker'?'working':origin,coins:inv.money,logs:inv.wood,planks:inv.planks,buildings:inv.houses,position_x:player.x,position_y:player.y,world_day:day,world_time:Math.floor(step/12)%24,game_state:s,updated_at:new Date().toISOString()};
- const {error}=await supabase.from('player_characters').upsert(row,{onConflict:'user_id'});
+ const {error}=await supabase.rpc('save_world_clock',{p_day:day,p_world_time:Math.floor(step/12)%24});
  if(error){setAccountStatus('Cloud save failed: '+error.message);return false;}
- localStorage.setItem('untitled-world-save',JSON.stringify(s));
- if(showMessage)say('Character saved to your online account.');
- setAccountStatus('Signed in. Your character is saved online.');
+ localStorage.setItem('untitled-world-save',JSON.stringify(snapshot()));
+ if(showMessage)say('Your server-validated character state is saved online.');
+ setAccountStatus('Signed in. Character state is saved online.');
  return true;
 }
 function scheduleCloudSave(){if(!currentUser)return;clearTimeout(saveTimer);saveTimer=setTimeout(()=>saveCloud(false),1200);}
 async function loadCloud(){
  if(!currentUser)return;
- const {data,error}=await supabase.from('player_characters').select('game_state').eq('user_id',currentUser.id).maybeSingle();
- if(error){setAccountStatus('Could not load cloud save: '+error.message);return;}
- if(data&&data.game_state&&restoreSnapshot(data.game_state)){setAccountStatus('Signed in. Online character loaded.');return;}
+ const [{data,error},{data:treeRows,error:treeError}]=await Promise.all([
+  supabase.from('player_characters').select('background,coins,logs,planks,buildings,position_x,position_y,world_day,world_time').eq('user_id',currentUser.id).maybeSingle(),
+  supabase.from('player_world_trees').select('id,x,y,alive').eq('user_id',currentUser.id)
+ ]);
+ if(error||treeError){setAccountStatus('Could not load online character: '+(error||treeError).message);return;}
+ if(data){applyCharacter(data,treeRows);setAccountStatus('Signed in. Online character loaded.');return;}
  setAccountStatus('Signed in. No online character yet. Choose a background and enter the world.');
 }
 const tile=40;
@@ -113,12 +123,62 @@ function draw(){ctx.clearRect(0,0,720,480);ctx.fillStyle='#31523a';ctx.fillRect(
  const near=nearTree();if(near){ctx.strokeStyle='#f0d28c';ctx.lineWidth=2;ctx.beginPath();ctx.arc(near.x,near.y,24,0,Math.PI*2);ctx.stroke();}
  document.getElementById('timeTag').textContent='Day '+day+' · '+(['Morning','Afternoon','Evening','Night'][Math.floor(step/12)%4]);}
 function update(){document.getElementById('money').textContent=inv.money;document.getElementById('wood').textContent=inv.wood;document.getElementById('planks').textContent=inv.planks;document.getElementById('houses').textContent=inv.houses;document.getElementById('originTag').textContent=backgrounds[origin].tag;document.getElementById('bio').textContent=backgrounds[origin].bio;document.getElementById('chop').disabled=!nearTree();document.getElementById('actionHint').textContent=nearTree()?'A tree is within reach. Chop it, or do something else.':'Move close to a tree to gather timber.';draw();}
-function move(dx,dy){player.x=Math.max(12,Math.min(708,player.x+dx));player.y=Math.max(12,Math.min(468,player.y+dy));step++;if(step%48===0)day++;update();scheduleCloudSave();}
-function actChop(){const t=nearTree();if(!t){say('You are too far from a living tree. Move closer first.');return;}t.alive=false;inv.wood+=3;step++;say('You cut down a tree and gathered 3 logs. The tree is gone from this patch of forest.');update();scheduleCloudSave();}
-function actPlank(){if(inv.wood<2){say('You need at least 2 logs to make 1 plank.');return;}inv.wood-=2;inv.planks++;say('You processed 2 logs into 1 plank.');update();scheduleCloudSave();}
-function actBuild(){if(inv.planks<8){say('A basic cabin needs 8 planks. You can gather and process more timber, or choose another activity.');return;}inv.planks-=8;inv.houses++;built.push({x:Math.max(35,Math.min(685,player.x+35)),y:Math.max(45,Math.min(435,player.y+12))});say('You built a small cabin. It is now part of this patch of land. Future versions will add land rights, construction materials, ownership, and other players.');update();scheduleCloudSave();}
+async function move(dx,dy){
+ if(currentUser){
+  const {data,error}=await supabase.rpc('move_player',{p_dx:dx,p_dy:dy});
+  if(error){say('Movement rejected: '+error.message);return;}
+  player.x=Number(data.x);player.y=Number(data.y);day=data.day;step=Number(data.world_time)*12;
+ }else{
+  player.x=Math.max(12,Math.min(708,player.x+dx));player.y=Math.max(12,Math.min(468,player.y+dy));step++;if(step%48===0)day++;
+ }
+ update();scheduleCloudSave();
+}
+async function actChop(){
+ if(currentUser){
+  const {data,error}=await supabase.rpc('chop_tree');
+  if(error){say('Chopping failed: '+error.message);return;}
+  inv.wood=data.logs;
+  const {data:treeRows,error:treeError}=await supabase.from('player_world_trees').select('id,x,y,alive').eq('user_id',currentUser.id);
+  if(!treeError)trees=treeRows.map(t=>({id:t.id,x:Number(t.x),y:Number(t.y),alive:t.alive}));
+  say('You cut down a tree and gathered 3 logs. The server recorded the harvest.');
+ }else{
+  const t=nearTree();if(!t){say('You are too far from a living tree. Move closer first.');return;}t.alive=false;inv.wood+=3;say('You cut down a tree and gathered 3 logs.');
+ }
+ step++;update();scheduleCloudSave();
+}
+async function actPlank(){
+ if(currentUser){
+  const {data,error}=await supabase.rpc('craft_plank');
+  if(error){say('Crafting failed: '+error.message);return;}
+  inv.wood=data.logs;inv.planks=data.planks;
+ }else{
+  if(inv.wood<2){say('You need at least 2 logs to make 1 plank.');return;}inv.wood-=2;inv.planks++;
+ }
+ say('You processed 2 logs into 1 plank.');update();scheduleCloudSave();
+}
+async function actBuild(){
+ if(currentUser){
+  const {data,error}=await supabase.rpc('build_cabin');
+  if(error){say('Building failed: '+error.message);return;}
+  inv.planks=data.planks;inv.houses=data.buildings;
+ }else{
+  if(inv.planks<8){say('A basic cabin needs 8 planks. You can gather and process more timber, or choose another activity.');return;}
+  inv.planks-=8;inv.houses++;
+ }
+ built.push({x:Math.max(35,Math.min(685,player.x+35)),y:Math.max(45,Math.min(435,player.y+12))});
+ say('You built a small cabin. Materials were checked by the server when signed in.');update();scheduleCloudSave();
+}
 document.querySelectorAll('[data-origin]').forEach(b=>b.addEventListener('click',()=>{document.querySelectorAll('[data-origin]').forEach(c=>c.classList.remove('selected'));b.classList.add('selected');origin=b.dataset.origin;}));
-document.getElementById('begin').onclick=()=>{inv={money:backgrounds[origin].money,wood:0,planks:0,houses:0};player={x:350,y:250};day=1;step=0;makeWorld();start.classList.add('hidden');game.classList.remove('hidden');update();say('Your background gave you different starting resources. Your future is not assigned.');scheduleCloudSave();};
+document.getElementById('begin').onclick=async()=>{
+ if(currentUser){
+  const bg=origin==='worker'?'working':origin;
+  setAccountStatus('Creating your character on the server…');
+  const {error}=await supabase.rpc('start_new_life',{p_background:bg});
+  if(error){setAccountStatus('Could not start character: '+error.message);return;}
+  await loadCloud();say('Your new life has been created by the server.');return;
+ }
+ inv={money:backgrounds[origin].money,wood:0,planks:0,houses:0};player={x:350,y:250};day=1;step=0;makeWorld();start.classList.add('hidden');game.classList.remove('hidden');update();say('Your background gave you different starting resources. Your future is not assigned.');
+};
 
 document.getElementById('signUp').onclick=async()=>{
  const email=document.getElementById('accountEmail').value.trim(),password=document.getElementById('accountPassword').value;
