@@ -19,7 +19,8 @@
   <div class="actions"><button id="signIn">Sign in</button><button id="signUp">Create account</button><button id="signOut" class="hidden">Sign out</button></div>
   <p id="accountStatus" class="notice" role="status">Not signed in. Local play is available.</p>
 </div>
-\n<div id="start" class="intro panel">
+
+<div id="start" class="intro panel">
   <div class="brand">A world without a quest marker</div>
   <h1>Your life.<br>Not a quest line.</h1>
   <p>This is the first playable experiment for an open-ended 2D world. Choose a beginning, walk into the wilderness, gather timber, make planks, and build something. There is no mandatory quest.</p>
@@ -142,7 +143,8 @@ document.getElementById('signOut').onclick=async()=>{
 supabase.auth.getSession().then(async({data})=>{
  if(data.session){currentUser=data.session.user;document.getElementById('signOut').classList.remove('hidden');setAccountStatus('Session restored. Loading your character…');await loadCloud();}
 });
-\ndocument.getElementById('chop').onclick=actChop;document.getElementById('plank').onclick=actPlank;document.getElementById('build').onclick=actBuild;
+
+document.getElementById('chop').onclick=actChop;document.getElementById('plank').onclick=actPlank;document.getElementById('build').onclick=actBuild;
 document.querySelectorAll('[data-move]').forEach(b=>{const dirs={up:[0,-20],down:[0,20],left:[-20,0],right:[20,0]};b.addEventListener('click',()=>move(...dirs[b.dataset.move]));});
 window.addEventListener('keydown',e=>{if(game.classList.contains('hidden'))return;const k=e.key.toLowerCase(),dirs={w:[0,-20],arrowup:[0,-20],s:[0,20],arrowdown:[0,20],a:[-20,0],arrowleft:[-20,0],d:[20,0],arrowright:[20,0]};if(dirs[k]){e.preventDefault();move(...dirs[k]);}});
 document.getElementById('save').onclick=async()=>{localStorage.setItem('untitled-world-save',JSON.stringify(snapshot()));if(currentUser){await saveCloud(true);}else{say('Saved on this browser only. Sign in to enable online saves.');}};
