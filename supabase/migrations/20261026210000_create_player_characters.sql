@@ -41,3 +41,8 @@ with check ((select auth.uid()) = user_id);
 
 create index player_characters_user_id_idx
 on public.player_characters(user_id);
+
+-- Restrict table privileges in addition to row-level security.
+revoke all on table public.player_characters from anon;
+revoke all on table public.player_characters from authenticated;
+grant select, insert, update on table public.player_characters to authenticated;
