@@ -9,7 +9,17 @@
 </style>
 </head>
 <body>
-<div id="start" class="intro panel">
+<div id="account" class="intro panel" style="margin-top:18px">
+  <h2>Player account</h2>
+  <p>Sign in to save your character to the online database. You can still play locally without an account.</p>
+  <label for="accountEmail">Email</label>
+  <input id="accountEmail" type="email" autocomplete="email" placeholder="you@example.com" style="display:block;width:100%;margin:5px 0 10px;padding:11px;border-radius:8px;border:1px solid #52765c;background:#111a14;color:#e8eee7">
+  <label for="accountPassword">Password</label>
+  <input id="accountPassword" type="password" autocomplete="current-password" placeholder="At least 6 characters" style="display:block;width:100%;margin:5px 0 10px;padding:11px;border-radius:8px;border:1px solid #52765c;background:#111a14;color:#e8eee7">
+  <div class="actions"><button id="signIn">Sign in</button><button id="signUp">Create account</button><button id="signOut" class="hidden">Sign out</button></div>
+  <p id="accountStatus" class="notice" role="status">Not signed in. Local play is available.</p>
+</div>
+\n<div id="start" class="intro panel">
   <div class="brand">A world without a quest marker</div>
   <h1>Your life.<br>Not a quest line.</h1>
   <p>This is the first playable experiment for an open-ended 2D world. Choose a beginning, walk into the wilderness, gather timber, make planks, and build something. There is no mandatory quest.</p>
@@ -20,10 +30,10 @@
     <button class="choice" data-origin="noble"><strong>Noble family</strong><small>Start with wealth, education, and connections. Privilege is a head start, not a win button.</small></button>
   </div>
   <button id="begin" class="wide">Enter the world</button>
-  <p class="notice">Prototype note: this version is a single-player mechanics test. It does not yet have online multiplayer, server persistence, or a shared economy. Those require the next backend stage.</p>
+  <p class="notice">Prototype note: online accounts and cloud character saves are being tested. The world is still single-player; multiplayer and a shared economy are not implemented yet.</p>
 </div>
 <div id="game" class="shell hidden">
-  <div class="top"><div><div class="brand">Untitled World</div><div class="sub">Prototype 0.1 · The frontier</div></div><div class="actions"><button id="save">Save locally</button><button id="reset">New life</button></div></div>
+  <div class="top"><div><div class="brand">Untitled World</div><div class="sub">Prototype 0.1 · The frontier</div></div><div class="actions"><button id="save">Save game</button><button id="reset">New life</button></div></div>
   <div class="layout">
     <section class="panel">
       <div class="worldwrap"><canvas id="world" width="720" height="480" aria-label="2D wilderness game world"></canvas></div>
@@ -47,6 +57,38 @@
 const canvas=document.getElementById('world'),ctx=canvas.getContext('2d');
 const start=document.getElementById('start'),game=document.getElementById('game');
 let origin='worker',player={x:350,y:250},inv={money:12,wood:0,planks:0,houses:0},day=1,step=0,trees=[],rocks=[],built=[];
+const SUPABASE_URL='https://ifhvwqmwrgjxpcuqpaed.supabase.co';
+const SUPABASE_KEY='sb_publishable_DoOhcXL2K_-PkgQPBLZUWw_teQl23ew';
+const supabase=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+let currentUser=null,saveTimer=null;
+const accountStatus=document.getElementById('accountStatus');
+function setAccountStatus(message){accountStatus.textContent=message;}
+function snapshot(){return {origin,player,inv,day,step,trees,rocks,built};}
+function restoreSnapshot(s){
+ if(!s||!s.player||!s.inv)return false;
+ origin=['worker','merchant','noble'].includes(s.origin)?s.origin:'worker';
+ player=s.player;inv=s.inv;day=s.day||1;step=s.step||0;trees=s.trees||[];rocks=s.rocks||[];built=s.built||[];
+ start.classList.add('hidden');game.classList.remove('hidden');update();say('Your character was restored from the saved world state.');return true;
+}
+async function saveCloud(showMessage=true){
+ if(!currentUser)return false;
+ const s=snapshot();
+ const row={user_id:currentUser.id,character_name:(currentUser.email||'Wanderer').split('@')[0].slice(0,32)||'Wanderer',background:origin==='worker'?'working':origin,coins:inv.money,logs:inv.wood,planks:inv.planks,buildings:inv.houses,position_x:player.x,position_y:player.y,world_day:day,world_time:Math.floor(step/12)%24,game_state:s,updated_at:new Date().toISOString()};
+ const {error}=await supabase.from('player_characters').upsert(row,{onConflict:'user_id'});
+ if(error){setAccountStatus('Cloud save failed: '+error.message);return false;}
+ localStorage.setItem('untitled-world-save',JSON.stringify(s));
+ if(showMessage)say('Character saved to your online account.');
+ setAccountStatus('Signed in. Your character is saved online.');
+ return true;
+}
+function scheduleCloudSave(){if(!currentUser)return;clearTimeout(saveTimer);saveTimer=setTimeout(()=>saveCloud(false),1200);}
+async function loadCloud(){
+ if(!currentUser)return;
+ const {data,error}=await supabase.from('player_characters').select('game_state').eq('user_id',currentUser.id).maybeSingle();
+ if(error){setAccountStatus('Could not load cloud save: '+error.message);return;}
+ if(data&&data.game_state&&restoreSnapshot(data.game_state)){setAccountStatus('Signed in. Online character loaded.');return;}
+ setAccountStatus('Signed in. No online character yet. Choose a background and enter the world.');
+}
 const tile=40;
 function makeWorld(){trees=[];rocks=[];built=[];for(let i=0;i<23;i++){let x=30+Math.random()*660,y=25+Math.random()*420;if(Math.hypot(x-player.x,y-player.y)>70)trees.push({x,y,alive:true});}for(let i=0;i<9;i++)rocks.push({x:20+Math.random()*680,y:20+Math.random()*440});}
 makeWorld();
@@ -69,16 +111,41 @@ function draw(){ctx.clearRect(0,0,720,480);ctx.fillStyle='#31523a';ctx.fillRect(
  const near=nearTree();if(near){ctx.strokeStyle='#f0d28c';ctx.lineWidth=2;ctx.beginPath();ctx.arc(near.x,near.y,24,0,Math.PI*2);ctx.stroke();}
  document.getElementById('timeTag').textContent='Day '+day+' · '+(['Morning','Afternoon','Evening','Night'][Math.floor(step/12)%4]);}
 function update(){document.getElementById('money').textContent=inv.money;document.getElementById('wood').textContent=inv.wood;document.getElementById('planks').textContent=inv.planks;document.getElementById('houses').textContent=inv.houses;document.getElementById('originTag').textContent=backgrounds[origin].tag;document.getElementById('bio').textContent=backgrounds[origin].bio;document.getElementById('chop').disabled=!nearTree();document.getElementById('actionHint').textContent=nearTree()?'A tree is within reach. Chop it, or do something else.':'Move close to a tree to gather timber.';draw();}
-function move(dx,dy){player.x=Math.max(12,Math.min(708,player.x+dx));player.y=Math.max(12,Math.min(468,player.y+dy));step++;if(step%48===0)day++;update();}
-function actChop(){const t=nearTree();if(!t){say('You are too far from a living tree. Move closer first.');return;}t.alive=false;inv.wood+=3;step++;say('You cut down a tree and gathered 3 logs. The tree is gone from this patch of forest.');update();}
-function actPlank(){if(inv.wood<2){say('You need at least 2 logs to make 1 plank.');return;}inv.wood-=2;inv.planks++;say('You processed 2 logs into 1 plank.');update();}
-function actBuild(){if(inv.planks<8){say('A basic cabin needs 8 planks. You can gather and process more timber, or choose another activity.');return;}inv.planks-=8;inv.houses++;built.push({x:Math.max(35,Math.min(685,player.x+35)),y:Math.max(45,Math.min(435,player.y+12))});say('You built a small cabin. It is now part of this patch of land. Future versions will add land rights, construction materials, ownership, and other players.');update();}
+function move(dx,dy){player.x=Math.max(12,Math.min(708,player.x+dx));player.y=Math.max(12,Math.min(468,player.y+dy));step++;if(step%48===0)day++;update();scheduleCloudSave();}
+function actChop(){const t=nearTree();if(!t){say('You are too far from a living tree. Move closer first.');return;}t.alive=false;inv.wood+=3;step++;say('You cut down a tree and gathered 3 logs. The tree is gone from this patch of forest.');update();scheduleCloudSave();}
+function actPlank(){if(inv.wood<2){say('You need at least 2 logs to make 1 plank.');return;}inv.wood-=2;inv.planks++;say('You processed 2 logs into 1 plank.');update();scheduleCloudSave();}
+function actBuild(){if(inv.planks<8){say('A basic cabin needs 8 planks. You can gather and process more timber, or choose another activity.');return;}inv.planks-=8;inv.houses++;built.push({x:Math.max(35,Math.min(685,player.x+35)),y:Math.max(45,Math.min(435,player.y+12))});say('You built a small cabin. It is now part of this patch of land. Future versions will add land rights, construction materials, ownership, and other players.');update();scheduleCloudSave();}
 document.querySelectorAll('[data-origin]').forEach(b=>b.addEventListener('click',()=>{document.querySelectorAll('[data-origin]').forEach(c=>c.classList.remove('selected'));b.classList.add('selected');origin=b.dataset.origin;}));
-document.getElementById('begin').onclick=()=>{inv={money:backgrounds[origin].money,wood:0,planks:0,houses:0};start.classList.add('hidden');game.classList.remove('hidden');makeWorld();update();say('Your background gave you different starting resources. Your future is not assigned.');};
-document.getElementById('chop').onclick=actChop;document.getElementById('plank').onclick=actPlank;document.getElementById('build').onclick=actBuild;
+document.getElementById('begin').onclick=()=>{inv={money:backgrounds[origin].money,wood:0,planks:0,houses:0};player={x:350,y:250};day=1;step=0;makeWorld();start.classList.add('hidden');game.classList.remove('hidden');update();say('Your background gave you different starting resources. Your future is not assigned.');scheduleCloudSave();};
+
+document.getElementById('signUp').onclick=async()=>{
+ const email=document.getElementById('accountEmail').value.trim(),password=document.getElementById('accountPassword').value;
+ if(!email||password.length<6){setAccountStatus('Enter a valid email and a password of at least 6 characters.');return;}
+ setAccountStatus('Creating account…');
+ const {data,error}=await supabase.auth.signUp({email,password});
+ if(error){setAccountStatus('Sign-up failed: '+error.message);return;}
+ if(data.session){currentUser=data.user;document.getElementById('signOut').classList.remove('hidden');setAccountStatus('Account created and signed in.');await loadCloud();}
+ else{setAccountStatus('Account created. Check your email for the verification link, then sign in.');}
+};
+document.getElementById('signIn').onclick=async()=>{
+ const email=document.getElementById('accountEmail').value.trim(),password=document.getElementById('accountPassword').value;
+ if(!email||!password){setAccountStatus('Enter your email and password.');return;}
+ setAccountStatus('Signing in…');
+ const {data,error}=await supabase.auth.signInWithPassword({email,password});
+ if(error){setAccountStatus('Sign-in failed: '+error.message);return;}
+ currentUser=data.user;document.getElementById('signOut').classList.remove('hidden');
+ setAccountStatus('Signed in. Loading your character…');await loadCloud();
+};
+document.getElementById('signOut').onclick=async()=>{
+ await supabase.auth.signOut();currentUser=null;document.getElementById('signOut').classList.add('hidden');setAccountStatus('Signed out. Local play is available.');
+};
+supabase.auth.getSession().then(async({data})=>{
+ if(data.session){currentUser=data.session.user;document.getElementById('signOut').classList.remove('hidden');setAccountStatus('Session restored. Loading your character…');await loadCloud();}
+});
+\ndocument.getElementById('chop').onclick=actChop;document.getElementById('plank').onclick=actPlank;document.getElementById('build').onclick=actBuild;
 document.querySelectorAll('[data-move]').forEach(b=>{const dirs={up:[0,-20],down:[0,20],left:[-20,0],right:[20,0]};b.addEventListener('click',()=>move(...dirs[b.dataset.move]));});
 window.addEventListener('keydown',e=>{if(game.classList.contains('hidden'))return;const k=e.key.toLowerCase(),dirs={w:[0,-20],arrowup:[0,-20],s:[0,20],arrowdown:[0,20],a:[-20,0],arrowleft:[-20,0],d:[20,0],arrowright:[20,0]};if(dirs[k]){e.preventDefault();move(...dirs[k]);}});
-document.getElementById('save').onclick=()=>{localStorage.setItem('untitled-world-save',JSON.stringify({origin,player,inv,day,step,trees,rocks,built}));say('Saved on this browser. This is not yet an online account save.');};
+document.getElementById('save').onclick=async()=>{localStorage.setItem('untitled-world-save',JSON.stringify(snapshot()));if(currentUser){await saveCloud(true);}else{say('Saved on this browser only. Sign in to enable online saves.');}};
 document.getElementById('reset').onclick=()=>{if(confirm('Start a new life? Your local prototype save will remain until overwritten.')){game.classList.add('hidden');start.classList.remove('hidden');player={x:350,y:250};step=0;day=1;makeWorld();}};
 try{const s=JSON.parse(localStorage.getItem('untitled-world-save'));if(s&&s.player&&s.inv){const b=document.createElement('button');b.textContent='Continue local save';b.className='wide';b.style.marginTop='8px';document.getElementById('begin').after(b);b.onclick=()=>{origin=s.origin||'worker';player=s.player;inv=s.inv;day=s.day||1;step=s.step||0;trees=s.trees||[];rocks=s.rocks||[];built=s.built||[];start.classList.add('hidden');game.classList.remove('hidden');update();say('Local save restored.');};}}catch(e){}
 draw();
