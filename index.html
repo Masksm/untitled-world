@@ -93,12 +93,13 @@ async function saveCloud(showMessage=true){
 function scheduleCloudSave(){if(!currentUser)return;clearTimeout(saveTimer);saveTimer=setTimeout(()=>saveCloud(false),1200);}
 async function loadCloud(){
  if(!currentUser)return;
- const [{data,error},{data:treeRows,error:treeError}]=await Promise.all([
+ const [{data,error},{data:treeRows,error:treeError},{data:buildingRows,error:buildingError}]=await Promise.all([
   supabase.from('player_characters').select('background,coins,logs,planks,buildings,position_x,position_y,world_day,world_time').eq('user_id',currentUser.id).maybeSingle(),
-  supabase.from('player_world_trees').select('id,x,y,alive').eq('user_id',currentUser.id)
+  supabase.from('player_world_trees').select('id,x,y,alive').eq('user_id',currentUser.id),
+  supabase.from('player_world_buildings').select('id,building_type,x,y').eq('user_id',currentUser.id)
  ]);
- if(error||treeError){setAccountStatus('Could not load online character: '+(error||treeError).message);return;}
- if(data){applyCharacter(data,treeRows);setAccountStatus('Signed in. Online character loaded.');return;}
+ if(error||treeError||buildingError){setAccountStatus('Could not load online world: '+(error||treeError||buildingError).message);return;}
+ if(data){applyCharacter(data,treeRows);built=(buildingRows||[]).map(b=>({id:b.id,x:Number(b.x),y:Number(b.y),type:b.building_type}));update();setAccountStatus('Signed in. Online character and world loaded.');return;}
  setAccountStatus('Signed in. No online character yet. Choose a background and enter the world.');
 }
 const tile=40;
@@ -158,24 +159,28 @@ async function actPlank(){
 }
 async function actBuild(){
  if(currentUser){
-  const {data,error}=await supabase.rpc('build_cabin');
+  const bx=Math.max(35,Math.min(685,player.x+25)),by=Math.max(45,Math.min(435,player.y+12));
+  const {data,error}=await supabase.rpc('build_cabin',{p_x:bx,p_y:by});
   if(error){say('Building failed: '+error.message);return;}
   inv.planks=data.planks;inv.houses=data.buildings;
+  built.push({id:data.id,x:Number(data.x),y:Number(data.y),type:data.building_type});
  }else{
   if(inv.planks<8){say('A basic cabin needs 8 planks. You can gather and process more timber, or choose another activity.');return;}
   inv.planks-=8;inv.houses++;
  }
- built.push({x:Math.max(35,Math.min(685,player.x+35)),y:Math.max(45,Math.min(435,player.y+12))});
- say('You built a small cabin. Materials were checked by the server when signed in.');update();scheduleCloudSave();
+ if(!currentUser)built.push({x:Math.max(35,Math.min(685,player.x+35)),y:Math.max(45,Math.min(435,player.y+12))});
+ say('You built a small cabin. Its location is now saved in your world.');update();scheduleCloudSave();
 }
 document.querySelectorAll('[data-origin]').forEach(b=>b.addEventListener('click',()=>{document.querySelectorAll('[data-origin]').forEach(c=>c.classList.remove('selected'));b.classList.add('selected');origin=b.dataset.origin;}));
 document.getElementById('begin').onclick=async()=>{
  if(currentUser){
   const bg=origin==='worker'?'working':origin;
   setAccountStatus('Creating your character on the server…');
-  const {error}=await supabase.rpc('start_new_life',{p_background:bg});
+  const {data,error}=await supabase.rpc('start_new_life',{p_background:bg});
   if(error){setAccountStatus('Could not start character: '+error.message);return;}
-  await loadCloud();say('Your new life has been created by the server.');return;
+  await loadCloud();
+  say(data&&data.existing?'Your existing character was preserved.':'Your new life has been created by the server.');
+  return;
  }
  inv={money:backgrounds[origin].money,wood:0,planks:0,houses:0};player={x:350,y:250};day=1;step=0;makeWorld();start.classList.add('hidden');game.classList.remove('hidden');update();say('Your background gave you different starting resources. Your future is not assigned.');
 };
