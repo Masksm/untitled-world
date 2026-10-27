@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Untitled World | Renderer Research Prototype</title>
+<style>
+:root{color-scheme:dark;--panel:#1c241f;--edge:#756746;--gold:#d6bb7d;--muted:#a9b7aa}
+*{box-sizing:border-box}body{margin:0;background:#101612;color:#e9eee7;font:14px/1.4 system-ui,sans-serif}.app{max-width:1100px;margin:auto;padding:14px}.head{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px}.brand{color:var(--gold);font-weight:800;letter-spacing:.08em;text-transform:uppercase}.muted{color:var(--muted);font-size:12px}.scene{position:relative;border:1px solid var(--edge);border-radius:8px;overflow:hidden;background:#19231c;box-shadow:0 12px 32px #0008}canvas{display:block;width:100%;height:auto;image-rendering:pixelated;touch-action:pan-y}.tools{display:flex;gap:7px;flex-wrap:wrap;margin:10px 0}button{background:#303f32;border:1px solid #6d805f;color:#fff4d7;padding:8px 11px;border-radius:6px}button:active{transform:translateY(1px)}.gump{position:absolute;top:14px;right:14px;width:185px;background:#1b211dF2;border:2px solid #8a774b;box-shadow:0 6px 18px #0009;border-radius:4px;touch-action:none}.gump header{background:linear-gradient(90deg,#6e5a32,#332b1c);padding:6px 8px;color:#f6df9f;font-weight:700;cursor:grab;user-select:none}.gump .body{padding:9px}.bar{height:8px;background:#3d4036;margin:4px 0 8px;border:1px solid #5e624f}.bar i{display:block;height:100%}.legend{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:8px;margin-top:12px}.note{background:#1a231c;border:1px solid #354638;border-radius:6px;padding:10px;color:#cbd7c8}.note b{color:var(--gold)}@media(max-width:600px){.gump{width:150px;top:8px;right:8px;font-size:12px}.gump .body{padding:6px}.app{padding:8px}}
+</style>
+</head>
+<body><main class="app">
+<div class="head"><div><div class="brand">Untitled World · Renderer Lab</div><div class="muted">Isometric terrain · depth-sorted objects · original placeholder sprites</div></div><div class="muted" id="readout">Renderer test build 01</div></div>
+<div class="tools"><button id="toggleGrid">Toggle tile grid</button><button id="toggleObjects">Toggle objects</button><button id="movePlayer">Move traveller</button><button id="reset">Reset scene</button></div>
+<section class="scene"><canvas id="world" width="960" height="560" aria-label="Isometric world renderer research prototype"></canvas>
+<div class="gump" id="status"><header id="drag">CHARACTER STATUS</header><div class="body"><div>Health <span style="float:right">82 / 100</span></div><div class="bar"><i style="width:82%;background:#a94a42"></i></div><div>Stamina <span style="float:right">67 / 100</span></div><div class="bar"><i style="width:67%;background:#78a64d"></i></div><div>Mana <span style="float:right">45 / 100</span></div><div class="bar"><i style="width:45%;background:#507eb6"></i></div><div class="muted">Visual test values only</div></div></div>
+</section>
+<div class="legend"><div class="note"><b>Terrain pass</b><br>Diamond tiles are drawn first. Each tile gets a subtle edge and variation so the grid reads as ground, not a flat green rectangle.</div><div class="note"><b>World-object pass</b><br>Trees, rocks, cabin and traveller are sorted by their ground position before drawing to approximate classic isometric overlap.</div><div class="note"><b>Asset strategy</b><br>This prototype draws original placeholder art. Later, licensed sprite sheets can replace the generated shapes without changing world coordinates.</div></div>
+</main>
+<script>
+(() => {
+const canvas=document.getElementById('world'),ctx=canvas.getContext('2d');
+const W=canvas.width,H=canvas.height,TW=64,TH=32,OX=480,OY=90;
+let showGrid=false,showObjects=true,player={x:5,y:5};
+const tile=(x,y)=>({x,y});
+const key=(x,y)=>(x*31+y*17)%11;
+function iso(x,y){return {x:OX+(x-y)*TW/2,y:OY+(x+y)*TH/2}}
+function poly(points,fill,stroke){ctx.beginPath();points.forEach((p,i)=>i?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y));ctx.closePath();ctx.fillStyle=fill;ctx.fill();if(stroke){ctx.strokeStyle=stroke;ctx.lineWidth=1;ctx.stroke()}}
+function diamond(x,y,color,edge){const p=iso(x,y);poly([{x:p.x,y:p.y},{x:p.x+TW/2,y:p.y+TH/2},{x:p.x,y:p.y+TH},{x:p.x-TW/2,y:p.y+TH/2}],color,edge)}
+function tree(x,y,scale=1){const p=iso(x,y);ctx.fillStyle='#171c15';ctx.fillRect(p.x-4*scale,p.y-29*scale,8*scale,31*scale);poly([{x:p.x,y:p.y-73*scale},{x:p.x+25*scale,y:p.y-37*scale},{x:p.x+11*scale,y:p.y-33*scale},{x:p.x+22*scale,y:p.y-14*scale},{x:p.x-21*scale,y:p.y-14*scale},{x:p.x-12*scale,y:p.y-34*scale},{x:p.x-25*scale,y:p.y-38*scale}], '#315d38','#1d3b25');poly([{x:p.x,y:p.y-62*scale},{x:p.x+16*scale,y:p.y-39*scale},{x:p.x+7*scale,y:p.y-37*scale},{x:p.x-5*scale,y:p.y-48*scale}], '#477848')}
+function rock(x,y){const p=iso(x,y);poly([{x:p.x-15,y:p.y-2},{x:p.x-9,y:p.y-15},{x:p.x+5,y:p.y-20},{x:p.x+17,y:p.y-9},{x:p.x+14,y:p.y+1}], '#7c8170','#454c40');poly([{x:p.x-9,y:p.y-15},{x:p.x+5,y:p.y-20},{x:p.x+1,y:p.y-8}], '#a0a38e')}
+function cabin(x,y){const p=iso(x,y);poly([{x:p.x-27,y:p.y-8},{x:p.x,y:p.y-25},{x:p.x+29,y:p.y-9},{x:p.x+1,y:p.y+8}], '#886642','#423321');poly([{x:p.x-27,y:p.y-8},{x:p.x-27,y:p.y-31},{x:p.x,y:p.y-47},{x:p.x,y:p.y-25}], '#68482d','#34291c');poly([{x:p.x,y:p.y-25},{x:p.x,y:p.y-47},{x:p.x+29,y:p.y-31},{x:p.x+29,y:p.y-9}], '#a17a49','#34291c');poly([{x:p.x-30,y:p.y-32},{x:p.x,y:p.y-53},{x:p.x+33,y:p.y-34},{x:p.x+4,y:p.y-14}], '#59402c','#2c241b');poly([{x:p.x-5,y:p.y+3},{x:p.x-5,y:p.y-14},{x:p.x+5,y:p.y-8},{x:p.x+5,y:p.y+7}], '#392a1d')}
+function person(x,y){const p=iso(x,y);ctx.fillStyle='#111710';ctx.beginPath();ctx.ellipse(p.x,p.y-1,12,5,0,0,Math.PI*2);ctx.fill();ctx.fillStyle='#c9a675';ctx.beginPath();ctx.arc(p.x,p.y-29,7,0,Math.PI*2);ctx.fill();poly([{x:p.x-8,y:p.y-22},{x:p.x+8,y:p.y-22},{x:p.x+10,y:p.y-6},{x:p.x-10,y:p.y-6}], '#435d83','#1c2938');poly([{x:p.x-8,y:p.y-20},{x:p.x-13,y:p.y-9},{x:p.x-8,y:p.y-7},{x:p.x-3,y:p.y-17}], '#c9a675');poly([{x:p.x+8,y:p.y-20},{x:p.x+13,y:p.y-9},{x:p.x+8,y:p.y-7},{x:p.x+3,y:p.y-17}], '#c9a675');ctx.fillStyle='#a5b5cc';ctx.fillRect(p.x-7,p.y-7,5,8);ctx.fillRect(p.x+2,p.y-7,5,8)}
+function draw(){ctx.clearRect(0,0,W,H);const grad=ctx.createLinearGradient(0,0,0,H);grad.addColorStop(0,'#24392a');grad.addColorStop(1,'#121b15');ctx.fillStyle=grad;ctx.fillRect(0,0,W,H);
+for(let sum=0;sum<22;sum++){for(let x=0;x<16;x++){let y=sum-x;if(y<0||y>=14)continue;const v=key(x,y);const col=['#365b39','#3a603c','#416744','#385d3b','#345637'][v%5];diamond(x,y,col,showGrid?'#52744d':'#3c6140');if(v===3||v===8){const p=iso(x,y);ctx.fillStyle='#6e8150';ctx.globalAlpha=.45;ctx.fillRect(p.x-2,p.y+12,4,2);ctx.globalAlpha=1}}}
+if(showObjects){const objects=[{x:2,y:3,type:'tree'},{x:4,y:2,type:'tree'},{x:10,y:3,type:'tree'},{x:12,y:5,type:'tree'},{x:3,y:9,type:'tree'},{x:8,y:10,type:'tree'},{x:7,y:4,type:'cabin'},{x:10,y:8,type:'rock'},{x:5,y:7,type:'rock'},{x:11,y:6,type:'tree'},{x:player.x,y:player.y,type:'person'}].sort((a,b)=>(a.x+a.y)-(b.x+b.y));for(const o of objects){if(o.type==='tree')tree(o.x,o.y,(o.x%3===0)?1.05:.9);if(o.type==='rock')rock(o.x,o.y);if(o.type==='cabin')cabin(o.x,o.y);if(o.type==='person')person(o.x,o.y)}}
+ctx.fillStyle='#e4d3a0';ctx.font='12px system-ui';ctx.fillText('THE FRONTIER',18,28);ctx.fillStyle='#a9b7aa';ctx.font='11px system-ui';ctx.fillText('Research scene · generated placeholder art · not connected to game state',18,46)}
+document.getElementById('toggleGrid').onclick=()=>{showGrid=!showGrid;draw()};document.getElementById('toggleObjects').onclick=()=>{showObjects=!showObjects;draw()};document.getElementById('movePlayer').onclick=()=>{player.x=(player.x+1)%13;player.y=(player.y+1)%11;draw();document.getElementById('readout').textContent='Traveller: tile '+player.x+', '+player.y};document.getElementById('reset').onclick=()=>{player={x:5,y:5};showGrid=false;showObjects=true;draw()};
+// Drag the status gump with mouse or touch.
+const g=document.getElementById('status'),h=document.getElementById('drag');let drag=null;
+h.addEventListener('pointerdown',e=>{const r=g.getBoundingClientRect();drag={x:e.clientX-r.left,y:e.clientY-r.top};h.setPointerCapture(e.pointerId)});
+h.addEventListener('pointermove',e=>{if(!drag)return;const r=canvas.parentElement.getBoundingClientRect();g.style.left=Math.max(0,Math.min(r.width-g.offsetWidth,e.clientX-r.left-drag.x))+'px';g.style.right='auto';g.style.top=Math.max(0,Math.min(r.height-g.offsetHeight,e.clientY-r.top-drag.y))+'px'});
+h.addEventListener('pointerup',()=>drag=null);h.addEventListener('pointercancel',()=>drag=null);
+draw();
+})();
+</script></body></html>
