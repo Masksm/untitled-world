@@ -39,6 +39,33 @@ canvas{image-rendering:pixelated}
 .notice{border-top-color:#625033}
 .sub{color:#c1b393}
 @media(max-width:760px){.shell{padding:8px}.layout{grid-template-columns:1fr}.panel{padding:10px}.worldwrap{margin:0}.top{align-items:flex-start}.brand{letter-spacing:.1em}.stat b{font-size:19px}}
+
+/* Lightweight classic-style windows over the world viewport. */
+.worldwrap{isolation:isolate}
+.world-status-gump{position:absolute;z-index:3;left:10px;top:48px;width:174px;padding:8px 9px 9px;background:linear-gradient(145deg,rgba(49,39,25,.97),rgba(25,21,15,.97));border:1px solid #a0844c;box-shadow:inset 0 0 0 1px #3e3020,0 3px 10px #0008;color:#ead9ad;pointer-events:none}
+.gump-title{display:flex;align-items:center;justify-content:space-between;gap:8px;font: bold 10px/1.2 Georgia,serif;letter-spacing:.15em;color:#e3c77f;border-bottom:1px solid #75603d;padding:0 0 6px;margin-bottom:7px}
+.gump-jewel{width:7px;height:7px;background:#7fba78;border:1px solid #d0dc9b;transform:rotate(45deg);display:inline-block;margin-right:4px}
+.bar-line{display:grid;grid-template-columns:27px 1fr 23px;align-items:center;gap:4px;margin:5px 0;font:9px Georgia,serif;color:#d9c9a5}
+.bar-line b{text-align:right;font-size:9px;font-weight:normal}
+.meter{height:7px;background:#120f0b;border:1px solid #6d5737;padding:1px}
+.meter i{height:100%;display:block}
+.meter-health{width:100%;background:linear-gradient(#b95e4e,#792b24)}
+.meter-stamina{width:100%;background:linear-gradient(#c5b75b,#81702c)}
+.meter-mana{width:100%;background:linear-gradient(#6a9cc7,#315a85)}
+.world-toolbar{position:absolute;z-index:4;right:10px;bottom:10px;display:flex;gap:5px}
+.world-toolbar button{font:10px Georgia,serif;padding:6px 8px;background:linear-gradient(#493922,#241b12);border-color:#a0844c;border-radius:2px;box-shadow:0 2px 5px #0009}
+.floating-gump{position:absolute;z-index:6;top:82px;right:12px;width:min(245px,calc(100% - 24px));background:linear-gradient(145deg,#3a2e1d,#1b1710);border:2px solid #947546;box-shadow:inset 0 0 0 1px #392b1a,0 6px 18px #000b;padding:10px;color:#e6d6b2}
+.floating-gump.hidden{display:none!important}
+.drag-handle{cursor:move;user-select:none}
+.gump-close{font:18px/1 Georgia,serif;padding:1px 5px;min-width:22px;border:1px solid #80663d;background:#211910;color:#f1d99b}
+.pack-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+.pack-slot{min-height:69px;border:1px solid #6c5636;background:linear-gradient(145deg,#201a12,#332718);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px}
+.pack-icon{font-size:18px;color:#d5b76e;text-shadow:0 1px #000}
+.pack-slot b{font: bold 15px Georgia,serif;color:#f0d9a0}
+.pack-slot small{font:10px Georgia,serif;color:#b9a987}
+.gump-note{font:11px/1.45 Georgia,serif;color:#bfb08f;margin:9px 0 0}
+.journal-text{max-height:120px;overflow:auto;border:1px solid #5c492e;background:#15120d;padding:8px;font:12px/1.5 Georgia,serif;color:#d9c9a5}
+@media(max-width:520px){.world-status-gump{left:6px;top:43px;transform:scale(.88);transform-origin:top left}.world-toolbar{right:5px;bottom:5px}.world-toolbar button{font-size:9px;padding:5px 6px}.floating-gump{top:72px;right:7px}}
 </style>
 </head>
 <body>
@@ -70,7 +97,32 @@ canvas{image-rendering:pixelated}
   <div class="top"><div><div class="brand">Untitled World</div><div class="sub">Prototype 0.1 · The frontier</div></div><div class="actions"><button id="save">Save game</button><button id="reset">New life</button></div></div>
   <div class="layout">
     <section class="panel">
-      <div class="worldwrap"><canvas id="world" width="720" height="480" aria-label="Isometric frontier game world"></canvas></div>
+      <div class="worldwrap"><canvas id="world" width="720" height="480" aria-label="Isometric frontier game world"></canvas>
+        <div class="world-status-gump" aria-label="Character status">
+          <div class="gump-title"><span class="gump-jewel"></span> WAYFARER</div>
+          <div class="bar-line"><span>HP</span><div class="meter"><i class="meter-health"></i></div><b>100</b></div>
+          <div class="bar-line"><span>STA</span><div class="meter"><i class="meter-stamina"></i></div><b>100</b></div>
+          <div class="bar-line"><span>MANA</span><div class="meter"><i class="meter-mana"></i></div><b>100</b></div>
+        </div>
+        <div class="world-toolbar" aria-label="World windows">
+          <button type="button" id="openPack" title="Open backpack">▣ Backpack</button>
+          <button type="button" id="openJournal" title="Open journal">▤ Journal</button>
+        </div>
+        <section id="backpackGump" class="floating-gump hidden" aria-label="Backpack inventory">
+          <div class="gump-title drag-handle"><span>BACKPACK</span><button type="button" class="gump-close" data-close-gump="backpackGump" aria-label="Close backpack">×</button></div>
+          <div class="pack-grid">
+            <div class="pack-slot"><span class="pack-icon">◈</span><b id="packCoins">12</b><small>Coins</small></div>
+            <div class="pack-slot"><span class="pack-icon">♣</span><b id="packLogs">0</b><small>Logs</small></div>
+            <div class="pack-slot"><span class="pack-icon">▤</span><b id="packPlanks">0</b><small>Planks</small></div>
+            <div class="pack-slot"><span class="pack-icon">⌂</span><b id="packHouses">0</b><small>Buildings</small></div>
+          </div>
+          <p class="gump-note">Items carried by your character.</p>
+        </section>
+        <section id="journalGump" class="floating-gump hidden" aria-label="Character journal">
+          <div class="gump-title drag-handle"><span>JOURNAL</span><button type="button" class="gump-close" data-close-gump="journalGump" aria-label="Close journal">×</button></div>
+          <p class="gump-note">Your life is recorded through actions, not quest markers.</p>
+          <div id="journalText" class="journal-text">You arrived at the edge of an untamed forest.</div>
+        </section></div>
       <div class="hud"><span class="pill" id="originTag">Background</span><span class="pill" id="timeTag">Day 1 · Morning</span><span class="pill" id="weatherTag">Clear</span></div>
       <div class="sub">Move with WASD / arrow keys, or use the mobile controls. Walk beside a tree and choose <b>Chop tree</b>. The world has no quest arrow telling you how to live.</div>
       <div class="controls">
@@ -140,7 +192,7 @@ const tile=40;
 function makeWorld(){trees=[];rocks=[];built=[];for(let i=0;i<23;i++){let x=30+Math.random()*660,y=25+Math.random()*420;if(Math.hypot(x-player.x,y-player.y)>70)trees.push({x,y,alive:true});}for(let i=0;i<9;i++)rocks.push({x:20+Math.random()*680,y:20+Math.random()*440});}
 makeWorld();
 const backgrounds={worker:{money:12,bio:'Working family · Practical skills · Little capital',tag:'Working family'},merchant:{money:85,bio:'Merchant family · Business knowledge · Better starting capital',tag:'Merchant family'},noble:{money:240,bio:'Noble family · Education and connections · More obligations',tag:'Noble family'}};
-function say(s){const log=document.getElementById('log'),p=document.createElement('p');p.textContent=s;log.prepend(p);while(log.children.length>16)log.lastChild.remove();}
+function say(s){const log=document.getElementById('log'),p=document.createElement('p');p.textContent=s;log.prepend(p);const journal=document.getElementById('journalText');if(journal){const entry=document.createElement('div');entry.textContent=s;journal.prepend(entry);}while(log.children.length>16)log.lastChild.remove();}
 function nearTree(){return trees.find(t=>t.alive&&Math.hypot(t.x-player.x,t.y-player.y)<62);}
 function nearMarket(){return Math.hypot(610-player.x,250-player.y)<66;}
 function projectWorld(wx,wy){
@@ -245,7 +297,7 @@ function draw(){
  ctx.fillStyle='rgba(12,20,15,.72)';ctx.fillRect(12,440,160,25);ctx.fillStyle='#c4d0bd';ctx.font='11px Georgia';ctx.fillText('Ground beneath your feet',21,456);
  document.getElementById('timeTag').textContent='Day '+day+' · '+(['Morning','Afternoon','Evening','Night'][Math.floor(step/12)%4]);
 }
-function update(){document.getElementById('money').textContent=inv.money;document.getElementById('wood').textContent=inv.wood;document.getElementById('planks').textContent=inv.planks;document.getElementById('houses').textContent=inv.houses;document.getElementById('originTag').textContent=backgrounds[origin].tag;document.getElementById('bio').textContent=backgrounds[origin].bio;document.getElementById('chop').disabled=!nearTree();document.getElementById('sellLogs').disabled=!nearMarket()||inv.wood<1;document.getElementById('sellPlanks').disabled=!nearMarket()||inv.planks<1;document.getElementById('marketHint').textContent=nearMarket()?'Market open: logs sell for 2 coins each; planks sell for 7.':'Travel to the market stall marked on the map to trade.';document.getElementById('actionHint').textContent=nearTree()?'A tree is within reach. Chop it, or do something else.':'Move close to a tree to gather timber.';draw();}
+function update(){document.getElementById('money').textContent=inv.money;document.getElementById('wood').textContent=inv.wood;document.getElementById('planks').textContent=inv.planks;document.getElementById('houses').textContent=inv.houses;['packCoins','packLogs','packPlanks','packHouses'].forEach((id,i)=>{document.getElementById(id).textContent=[inv.money,inv.wood,inv.planks,inv.houses][i];});document.getElementById('originTag').textContent=backgrounds[origin].tag;document.getElementById('bio').textContent=backgrounds[origin].bio;document.getElementById('chop').disabled=!nearTree();document.getElementById('sellLogs').disabled=!nearMarket()||inv.wood<1;document.getElementById('sellPlanks').disabled=!nearMarket()||inv.planks<1;document.getElementById('marketHint').textContent=nearMarket()?'Market open: logs sell for 2 coins each; planks sell for 7.':'Travel to the market stall marked on the map to trade.';document.getElementById('actionHint').textContent=nearTree()?'A tree is within reach. Chop it, or do something else.':'Move close to a tree to gather timber.';draw();}
 async function move(dx,dy){
  if(currentUser){
   const {data,error}=await supabase.rpc('move_player',{p_dx:dx,p_dy:dy});
@@ -348,6 +400,15 @@ supabase.auth.getSession().then(async({data})=>{
  if(data.session){currentUser=data.session.user;document.getElementById('signOut').classList.remove('hidden');setAccountStatus('Session restored. Loading your character…');await loadCloud();}
 });
 
+document.getElementById('openPack').onclick=()=>document.getElementById('backpackGump').classList.toggle('hidden');
+document.getElementById('openJournal').onclick=()=>document.getElementById('journalGump').classList.toggle('hidden');
+document.querySelectorAll('[data-close-gump]').forEach(b=>b.onclick=()=>document.getElementById(b.dataset.closeGump).classList.add('hidden'));
+document.querySelectorAll('.floating-gump').forEach(gump=>{
+ const handle=gump.querySelector('.drag-handle');if(!handle)return;let drag=null;
+ handle.addEventListener('pointerdown',e=>{if(e.target.closest('button'))return;drag={x:e.clientX,y:e.clientY,left:gump.offsetLeft,top:gump.offsetTop};handle.setPointerCapture(e.pointerId);});
+ handle.addEventListener('pointermove',e=>{if(!drag)return;const wrap=gump.parentElement.getBoundingClientRect();const left=Math.max(0,Math.min(wrap.width-gump.offsetWidth,drag.left+e.clientX-drag.x));const top=Math.max(0,Math.min(wrap.height-gump.offsetHeight,drag.top+e.clientY-drag.y));gump.style.left=left+'px';gump.style.top=top+'px';gump.style.right='auto';});
+ handle.addEventListener('pointerup',()=>drag=null);handle.addEventListener('pointercancel',()=>drag=null);
+});
 document.getElementById('chop').onclick=actChop;document.getElementById('plank').onclick=actPlank;document.getElementById('build').onclick=actBuild;document.getElementById('sellLogs').onclick=()=>sellGoods('logs');document.getElementById('sellPlanks').onclick=()=>sellGoods('planks');
 document.querySelectorAll('[data-move]').forEach(b=>{const dirs={up:[0,-20],down:[0,20],left:[-20,0],right:[20,0]};b.addEventListener('click',()=>move(...dirs[b.dataset.move]));});
 window.addEventListener('keydown',e=>{if(game.classList.contains('hidden'))return;const k=e.key.toLowerCase(),dirs={w:[0,-20],arrowup:[0,-20],s:[0,20],arrowdown:[0,20],a:[-20,0],arrowleft:[-20,0],d:[20,0],arrowright:[20,0]};if(dirs[k]){e.preventDefault();move(...dirs[k]);}});
