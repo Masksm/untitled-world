@@ -143,6 +143,7 @@ canvas{image-rendering:pixelated}
 <script>
 (()=> {
 const canvas=document.getElementById('world'),ctx=canvas.getContext('2d');
+ const spriteAtlas=new Image();spriteAtlas.src='./assets/original-sprite-atlas.svg';
 const start=document.getElementById('start'),game=document.getElementById('game');
 let origin='worker',player={x:350,y:250},inv={money:12,wood:0,planks:0,houses:0},day=1,step=0,trees=[],rocks=[],built=[];
 const SUPABASE_URL='https://ifhvwqmwrgjxpcuqpaed.supabase.co';
@@ -208,34 +209,30 @@ function polygon(points,fill,stroke){
  ctx.fillStyle=fill;ctx.fill();if(stroke){ctx.strokeStyle=stroke;ctx.lineWidth=1;ctx.stroke();}
 }
 function drawTree(t){
- const p=projectWorld(t.x,t.y);
- ctx.fillStyle='rgba(9,17,10,.42)';ctx.beginPath();ctx.ellipse(p.x+2,p.y+3,15,6,0,0,Math.PI*2);ctx.fill();
- // trunk and roots
- polygon([[p.x-4,p.y-1],[p.x+4,p.y-1],[p.x+5,p.y-22],[p.x-3,p.y-22]],'#68452b','#38291d');
- ctx.fillStyle='#9b7043';ctx.fillRect(p.x-1,p.y-19,2,14);
- // layered, deliberately chunky foliage
- polygon([[p.x-22,p.y-22],[p.x-15,p.y-39],[p.x-4,p.y-46],[p.x+10,p.y-41],[p.x+20,p.y-26],[p.x+15,p.y-14],[p.x-12,p.y-13]],'#183a27','#102b1d');
- polygon([[p.x-19,p.y-28],[p.x-12,p.y-43],[p.x-2,p.y-48],[p.x+11,p.y-40],[p.x+17,p.y-28],[p.x+7,p.y-20],[p.x-11,p.y-20]],'#28563a','#173b28');
- polygon([[p.x-12,p.y-34],[p.x-6,p.y-44],[p.x+2,p.y-45],[p.x+8,p.y-36],[p.x+1,p.y-29],[p.x-9,p.y-29]],'#3c7145');
- ctx.fillStyle='#72935a';ctx.fillRect(p.x-8,p.y-39,4,3);ctx.fillRect(p.x+3,p.y-34,3,3);
-}
-function drawRock(r){
- const p=projectWorld(r.x,r.y);diamond(p.x,p.y,12,6,'rgba(8,15,10,.35)');
- polygon([[p.x-10,p.y-2],[p.x-6,p.y-11],[p.x+2,p.y-14],[p.x+10,p.y-7],[p.x+9,p.y],[p.x-3,p.y+2]],'#68786e','#35443a');
- polygon([[p.x-6,p.y-9],[p.x+2,p.y-13],[p.x+6,p.y-8],[p.x-1,p.y-5]],'#9ba69a');
-}
-function drawCabin(b){
- const p=projectWorld(b.x,b.y);
- diamond(p.x,p.y+2,28,12,'rgba(8,12,8,.38)');
- // side and front walls
- polygon([[p.x-19,p.y-20],[p.x,p.y-10],[p.x,p.y+16],[p.x-19,p.y+5]],'#795638','#39291c');
- polygon([[p.x,p.y-10],[p.x+20,p.y-21],[p.x+20,p.y+5],[p.x,p.y+16]],'#5e422d','#39291c');
- // roof planes
- polygon([[p.x-25,p.y-21],[p.x-3,p.y-37],[p.x+2,p.y-32],[p.x-19,p.y-15]],'#6e3429','#39231c');
- polygon([[p.x-3,p.y-37],[p.x+25,p.y-24],[p.x+20,p.y-17],[p.x+2,p.y-32]],'#8a4532','#39231c');
- ctx.fillStyle='#d1b17a';ctx.fillRect(p.x-5,p.y-3,8,19);ctx.fillStyle='#30251d';ctx.fillRect(p.x-2,p.y+5,2,3);
-}
-function drawMarket(){
+  const p=projectWorld(t.x,t.y);ctx.fillStyle='rgba(9,17,10,.42)';ctx.beginPath();ctx.ellipse(p.x+2,p.y+3,16,6,0,0,Math.PI*2);ctx.fill();
+  if(spriteAtlas.complete&&spriteAtlas.naturalWidth){const sway=Math.sin(performance.now()*.0018+t.x*.04+t.y*.03)*.012;ctx.save();ctx.translate(p.x,p.y);ctx.rotate(sway);ctx.drawImage(spriteAtlas,160,5,100,124,-25,-62,50,62);ctx.restore();return;}
+  polygon([[p.x-4,p.y-1],[p.x+4,p.y-1],[p.x+5,p.y-22],[p.x-3,p.y-22]],'#68452b','#38291d');
+  polygon([[p.x-22,p.y-22],[p.x-15,p.y-39],[p.x-4,p.y-46],[p.x+10,p.y-41],[p.x+20,p.y-26],[p.x+15,p.y-14],[p.x-12,p.y-13]],'#183a27','#102b1d');
+  polygon([[p.x-19,p.y-28],[p.x-12,p.y-43],[p.x-2,p.y-48],[p.x+11,p.y-40],[p.x+17,p.y-28],[p.x+7,p.y-20],[p.x-11,p.y-20]],'#28563a','#173b28');
+ }
+
+ function drawRock(r){
+  const p=projectWorld(r.x,r.y);diamond(p.x,p.y,14,6,'rgba(8,15,10,.35)');
+  if(spriteAtlas.complete&&spriteAtlas.naturalWidth){ctx.drawImage(spriteAtlas,280,28,100,70,p.x-25,p.y-22,50,35);return;}
+  polygon([[p.x-10,p.y-2],[p.x-6,p.y-11],[p.x+2,p.y-14],[p.x+10,p.y-7],[p.x+9,p.y],[p.x-3,p.y+2]],'#68786e','#35443a');
+  polygon([[p.x-6,p.y-9],[p.x+2,p.y-13],[p.x+6,p.y-8],[p.x-1,p.y-5]],'#9ba69a');
+ }
+
+ function drawCabin(b){
+  const p=projectWorld(b.x,b.y);diamond(p.x,p.y+2,30,12,'rgba(8,12,8,.38)');
+  if(spriteAtlas.complete&&spriteAtlas.naturalWidth){ctx.drawImage(spriteAtlas,8,112,140,120,p.x-35,p.y-58,70,60);return;}
+  polygon([[p.x-19,p.y-20],[p.x,p.y-10],[p.x,p.y+16],[p.x-19,p.y+5]],'#795638','#39291c');
+  polygon([[p.x,p.y-10],[p.x+20,p.y-21],[p.x+20,p.y+5],[p.x,p.y+16]],'#5e422d','#39291c');
+  polygon([[p.x-25,p.y-21],[p.x-3,p.y-37],[p.x+2,p.y-32],[p.x-19,p.y-15]],'#6e3429','#39231c');
+  polygon([[p.x-3,p.y-37],[p.x+25,p.y-24],[p.x+20,p.y-17],[p.x+2,p.y-32]],'#8a4532','#39231c');
+ }
+
+ function drawMarket(){
  const p=projectWorld(610,250);
  diamond(p.x,p.y+2,31,13,'rgba(8,12,8,.38)');
  polygon([[p.x-23,p.y-20],[p.x,p.y-8],[p.x,p.y+11],[p.x-23,p.y-1]],'#63452d','#30251d');
@@ -247,21 +244,16 @@ function drawMarket(){
  ctx.fillStyle='#f1dba7';ctx.font='bold 10px Georgia';ctx.textAlign='center';ctx.fillText('MARKET',p.x,p.y-44);ctx.textAlign='start';
 }
 function drawPlayer(){
- const p={x:360,y:228};
- // feet/shadow
- ctx.fillStyle='rgba(6,10,7,.48)';ctx.beginPath();ctx.ellipse(p.x,p.y+4,12,5,0,0,Math.PI*2);ctx.fill();
- // boots and legs
- ctx.fillStyle='#30251d';ctx.fillRect(p.x-7,p.y-1,5,10);ctx.fillRect(p.x+2,p.y-1,5,10);
- ctx.fillStyle='#6b4930';ctx.fillRect(p.x-8,p.y+6,6,4);ctx.fillRect(p.x+2,p.y+6,6,4);
- // tunic with pixel-style trim
- const robe=origin==='noble'?'#7760a1':origin==='merchant'?'#b58a3f':'#426e83';
- polygon([[p.x-8,p.y-17],[p.x-4,p.y-21],[p.x+4,p.y-21],[p.x+9,p.y-16],[p.x+8,p.y-2],[p.x-8,p.y-2]],robe,'#22271f');
- ctx.fillStyle=origin==='noble'?'#c8b5e4':origin==='merchant'?'#e3c979':'#8ab7c5';ctx.fillRect(p.x-1,p.y-18,2,14);
- ctx.fillStyle='#d9b18a';ctx.fillRect(p.x-5,p.y-31,10,10);
- ctx.fillStyle='#463126';ctx.fillRect(p.x-6,p.y-34,12,5);ctx.fillRect(p.x-5,p.y-37,10,4);
- ctx.fillStyle='#f0d28c';ctx.fillRect(p.x-2,p.y-14,4,3);
-}
-function draw(){
+  const p={x:360,y:228},bob=Math.sin(performance.now()*.003)*.6;
+  ctx.fillStyle='rgba(6,10,7,.48)';ctx.beginPath();ctx.ellipse(p.x,p.y+4,12,5,0,0,Math.PI*2);ctx.fill();
+  if(spriteAtlas.complete&&spriteAtlas.naturalWidth){ctx.drawImage(spriteAtlas,168,145,70,105,p.x-18,p.y-52-bob,36,54);return;}
+  ctx.fillStyle='#30251d';ctx.fillRect(p.x-7,p.y-1,5,10);ctx.fillRect(p.x+2,p.y-1,5,10);
+  const robe=origin==='noble'?'#7760a1':origin==='merchant'?'#b58a3f':'#426e83';
+  polygon([[p.x-8,p.y-17-bob],[p.x-4,p.y-21-bob],[p.x+4,p.y-21-bob],[p.x+9,p.y-16-bob],[p.x+8,p.y-2-bob],[p.x-8,p.y-2-bob]],robe,'#22271f);
+  ctx.fillStyle='#d9b18a';ctx.fillRect(p.x-5,p.y-31-bob,10,10);ctx.fillStyle='#463126';ctx.fillRect(p.x-6,p.y-34-bob,12,5);
+ }
+
+ function draw(){
  ctx.clearRect(0,0,720,480);
  const sky=ctx.createLinearGradient(0,0,0,480);sky.addColorStop(0,'#172b22');sky.addColorStop(1,'#203b2b');ctx.fillStyle=sky;ctx.fillRect(0,0,720,480);
  // Isometric ground tiles follow the player, creating a scrolling world rather than a flat board.
