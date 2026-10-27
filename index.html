@@ -48,6 +48,7 @@
     <aside class="stack">
       <section class="panel"><h2 class="section">Your character</h2><div id="bio" class="sub">A life is shaped by circumstances and choices.</div><div class="stats" style="margin-top:10px"><div class="stat"><b id="money">12</b><span>Coins</span></div><div class="stat"><b id="wood">0</b><span>Logs</span></div><div class="stat"><b id="planks">0</b><span>Planks</span></div><div class="stat"><b id="houses">0</b><span>Buildings</span></div></div></section>
       <section class="panel"><h2 class="section">Actions</h2><div class="actions"><button id="chop">Chop tree</button><button id="plank">Make planks</button><button id="build">Build a cabin</button></div><p id="actionHint" class="sub">Get close to a tree before chopping. Actions depend on your position and resources.</p></section>
+      <section class="panel"><h2 class="section">Frontier market</h2><p id="marketHint" class="sub">Travel to the market stall marked on the map to trade.</p><div class="actions"><button id="sellLogs" disabled>Sell all logs · 2 coins each</button><button id="sellPlanks" disabled>Sell all planks · 7 coins each</button></div><p class="sub">Trading is only available beside the stall. Prices are currently fixed for this prototype.</p></section>
       <section class="panel"><h2 class="section">What happens here</h2><div id="log" class="log" aria-live="polite"><p>You arrive at the edge of an untamed forest.</p><p>No quest has been assigned. That is intentional.</p></div></section>
       <section class="panel"><h2 class="section">Design rule</h2><div class="sub">Actions change the world. Background changes your starting chances. The long-term game will add player ownership, families, trades, politics, and other people whose choices collide with yours.</div><div class="notice">Local save is only on this device/browser. Do not treat this prototype as the online game yet.</div></section>
     </aside>
@@ -108,6 +109,7 @@ makeWorld();
 const backgrounds={worker:{money:12,bio:'Working family · Practical skills · Little capital',tag:'Working family'},merchant:{money:85,bio:'Merchant family · Business knowledge · Better starting capital',tag:'Merchant family'},noble:{money:240,bio:'Noble family · Education and connections · More obligations',tag:'Noble family'}};
 function say(s){const log=document.getElementById('log'),p=document.createElement('p');p.textContent=s;log.prepend(p);while(log.children.length>16)log.lastChild.remove();}
 function nearTree(){return trees.find(t=>t.alive&&Math.hypot(t.x-player.x,t.y-player.y)<62);}
+function nearMarket(){return Math.hypot(610-player.x,250-player.y)<66;}
 function draw(){ctx.clearRect(0,0,720,480);ctx.fillStyle='#31523a';ctx.fillRect(0,0,720,480);
  // patches of grass
  for(let y=0;y<480;y+=20)for(let x=0;x<720;x+=20){let n=Math.sin(x*12.9898+y*78.233)*43758.5453;ctx.fillStyle=(n-Math.floor(n))>.65?'#365b3e':'#31523a';ctx.fillRect(x,y,18,18);}
@@ -118,12 +120,14 @@ function draw(){ctx.clearRect(0,0,720,480);ctx.fillStyle='#31523a';ctx.fillRect(
  ctx.strokeStyle='#a2946a';ctx.lineWidth=20;ctx.stroke();
  rocks.forEach(r=>{ctx.fillStyle='#747e73';ctx.beginPath();ctx.ellipse(r.x,r.y,11,8,-.2,0,Math.PI*2);ctx.fill();ctx.fillStyle='#9da69a';ctx.fillRect(r.x-5,r.y-5,7,3);});
  trees.forEach(t=>{if(!t.alive)return;ctx.fillStyle='#5b3e28';ctx.fillRect(t.x-4,t.y+5,8,17);ctx.fillStyle='#193d29';ctx.beginPath();ctx.arc(t.x,t.y,18,0,Math.PI*2);ctx.fill();ctx.fillStyle='#27603a';ctx.beginPath();ctx.arc(t.x-6,t.y-6,12,0,Math.PI*2);ctx.fill();ctx.fillStyle='#4b7b47';ctx.fillRect(t.x-8,t.y-11,5,4);});
+ // Market stall: a fixed landmark where players can exchange gathered goods.
+ ctx.fillStyle='#59432e';ctx.fillRect(585,235,50,30);ctx.fillStyle='#8b4d3c';ctx.beginPath();ctx.moveTo(578,237);ctx.lineTo(610,215);ctx.lineTo(642,237);ctx.fill();ctx.fillStyle='#d7b875';ctx.fillRect(590,239,40,5);ctx.fillStyle='#e8eee7';ctx.font='11px system-ui';ctx.fillText('MARKET',589,207);
  built.forEach(b=>{ctx.fillStyle='#705035';ctx.fillRect(b.x-20,b.y-16,40,28);ctx.fillStyle='#47352a';ctx.beginPath();ctx.moveTo(b.x-25,b.y-16);ctx.lineTo(b.x,b.y-36);ctx.lineTo(b.x+25,b.y-16);ctx.fill();ctx.fillStyle='#b18a55';ctx.fillRect(b.x-5,b.y-2,10,14);});
  // player shadow + figure
  ctx.fillStyle='#18251b';ctx.beginPath();ctx.ellipse(player.x,player.y+10,10,5,0,0,Math.PI*2);ctx.fill();ctx.fillStyle='#e6c39a';ctx.beginPath();ctx.arc(player.x,player.y-5,7,0,Math.PI*2);ctx.fill();ctx.fillStyle=origin==='noble'?'#b8a0db':origin==='merchant'?'#d2ae5e':'#6ba7c7';ctx.fillRect(player.x-7,player.y+2,14,16);ctx.fillStyle='#302c25';ctx.fillRect(player.x-6,player.y+17,5,8);ctx.fillRect(player.x+2,player.y+17,5,8);
  const near=nearTree();if(near){ctx.strokeStyle='#f0d28c';ctx.lineWidth=2;ctx.beginPath();ctx.arc(near.x,near.y,24,0,Math.PI*2);ctx.stroke();}
  document.getElementById('timeTag').textContent='Day '+day+' · '+(['Morning','Afternoon','Evening','Night'][Math.floor(step/12)%4]);}
-function update(){document.getElementById('money').textContent=inv.money;document.getElementById('wood').textContent=inv.wood;document.getElementById('planks').textContent=inv.planks;document.getElementById('houses').textContent=inv.houses;document.getElementById('originTag').textContent=backgrounds[origin].tag;document.getElementById('bio').textContent=backgrounds[origin].bio;document.getElementById('chop').disabled=!nearTree();document.getElementById('actionHint').textContent=nearTree()?'A tree is within reach. Chop it, or do something else.':'Move close to a tree to gather timber.';draw();}
+function update(){document.getElementById('money').textContent=inv.money;document.getElementById('wood').textContent=inv.wood;document.getElementById('planks').textContent=inv.planks;document.getElementById('houses').textContent=inv.houses;document.getElementById('originTag').textContent=backgrounds[origin].tag;document.getElementById('bio').textContent=backgrounds[origin].bio;document.getElementById('chop').disabled=!nearTree();document.getElementById('sellLogs').disabled=!nearMarket()||inv.wood<1;document.getElementById('sellPlanks').disabled=!nearMarket()||inv.planks<1;document.getElementById('marketHint').textContent=nearMarket()?'Market open: logs sell for 2 coins each; planks sell for 7.':'Travel to the market stall marked on the map to trade.';document.getElementById('actionHint').textContent=nearTree()?'A tree is within reach. Chop it, or do something else.':'Move close to a tree to gather timber.';draw();}
 async function move(dx,dy){
  if(currentUser){
   const {data,error}=await supabase.rpc('move_player',{p_dx:dx,p_dy:dy});
@@ -156,6 +160,22 @@ async function actPlank(){
   if(inv.wood<2){say('You need at least 2 logs to make 1 plank.');return;}inv.wood-=2;inv.planks++;
  }
  say('You processed 2 logs into 1 plank.');update();scheduleCloudSave();
+}
+async function sellGoods(resource){
+ const quantity=resource==='logs'?inv.wood:inv.planks;
+ if(quantity<1){say('You have none of that good to sell.');return;}
+ if(!nearMarket()){say('Travel to the market stall before trading.');return;}
+ if(currentUser){
+  const {data,error}=await supabase.rpc('sell_resource',{p_resource:resource,p_quantity:quantity});
+  if(error){say('Trade failed: '+error.message);return;}
+  inv.money=data.coins;inv.wood=data.logs;inv.planks=data.planks;
+  say('Sold '+data.sold+' '+resource+' for '+data.earned+' coins. The server recorded the trade.');
+ }else{
+  const price=resource==='logs'?2:7,earned=quantity*price;
+  if(resource==='logs')inv.wood=0;else inv.planks=0;
+  inv.money+=earned;say('Sold '+quantity+' '+resource+' for '+earned+' coins.');
+ }
+ update();scheduleCloudSave();
 }
 async function actBuild(){
  if(currentUser){
@@ -210,7 +230,7 @@ supabase.auth.getSession().then(async({data})=>{
  if(data.session){currentUser=data.session.user;document.getElementById('signOut').classList.remove('hidden');setAccountStatus('Session restored. Loading your character…');await loadCloud();}
 });
 
-document.getElementById('chop').onclick=actChop;document.getElementById('plank').onclick=actPlank;document.getElementById('build').onclick=actBuild;
+document.getElementById('chop').onclick=actChop;document.getElementById('plank').onclick=actPlank;document.getElementById('build').onclick=actBuild;document.getElementById('sellLogs').onclick=()=>sellGoods('logs');document.getElementById('sellPlanks').onclick=()=>sellGoods('planks');
 document.querySelectorAll('[data-move]').forEach(b=>{const dirs={up:[0,-20],down:[0,20],left:[-20,0],right:[20,0]};b.addEventListener('click',()=>move(...dirs[b.dataset.move]));});
 window.addEventListener('keydown',e=>{if(game.classList.contains('hidden'))return;const k=e.key.toLowerCase(),dirs={w:[0,-20],arrowup:[0,-20],s:[0,20],arrowdown:[0,20],a:[-20,0],arrowleft:[-20,0],d:[20,0],arrowright:[20,0]};if(dirs[k]){e.preventDefault();move(...dirs[k]);}});
 document.getElementById('save').onclick=async()=>{localStorage.setItem('untitled-world-save',JSON.stringify(snapshot()));if(currentUser){await saveCloud(true);}else{say('Saved on this browser only. Sign in to enable online saves.');}};
